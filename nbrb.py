@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-import json
 
 
 @dataclass
@@ -40,23 +39,36 @@ class Client:
         url = f'{Client.API_BASE_URL}{method}'
         result = requests.get(url, parameters)
         result.raise_for_status()
-        return json.loads(result.text)
+        return result.json()
+
+    @staticmethod
+    def _currency_from_dict(raw: dict) -> Currency:
+        return Currency(
+            internal_id=raw['Cur_ID'],
+            internal_code=raw['Cur_Code'],
+            abbreviation=raw['Cur_Abbreviation'],
+            name=raw['Cur_Name_Eng'],
+            name_blr=raw['Cur_Name_Bel'],
+            scale=raw['Cur_Scale'],
+            periodicity=raw['Cur_Periodicity'],
+            date_start=datetime.fromisoformat(raw['Cur_DateStart']),
+            date_end=datetime.fromisoformat(raw['Cur_DateEnd']),
+        )
+
+    @staticmethod
+    def _rate_from_dict(raw):
+        return Rate(
+            internal_id=raw['Cur_ID'],
+            date=datetime.fromisoformat(raw['Date']),
+            abbreviation=raw['Cur_Abbreviation'],
+            rate=Decimal(str(raw['Cur_OfficialRate']))
+        )
 
     def available_currencies(self) -> dict:
         if self._available_currencies is None:
             response = Client._make_api_call(Client.API_CURRENCIES)
             self._available_currencies = {
-                row['Cur_Abbreviation']: Currency(
-                    internal_id=row['Cur_ID'],
-                    internal_code=row['Cur_Code'],
-                    abbreviation=row['Cur_Abbreviation'],
-                    name=row['Cur_Name_Eng'],
-                    name_blr=row['Cur_Name_Bel'],
-                    scale=row['Cur_Scale'],
-                    periodicity=row['Cur_Periodicity'],
-                    date_start=datetime.fromisoformat(row['Cur_DateStart']),
-                    date_end=datetime.fromisoformat(row['Cur_DateEnd']),
-                ) for row in response
+                row['Cur_Abbreviation']: Client._currency_from_dict(row) for row in response
             }
         return self._available_currencies
 
@@ -65,9 +77,8 @@ class Client:
             currency = self.available_currencies()[currency]
         currency_code = currency.internal_id
         row = Client._make_api_call(Client.API_RATES + f'/{currency_code}')
-        return Rate(
-            internal_id=row['Cur_ID'],
-            date=datetime.fromisoformat(row['Date']),
-            abbreviation=row['Cur_Abbreviation'],
-            rate=Decimal(str(row['Cur_OfficialRate']))
-        )
+        return Client._rate_from_dict(row)
+
+    def all_rates(self) -> list[Rate]:
+        res = self._make_api_call(Client.API_RATES)
+        return [Client._rate_from_dict(row) for row in res]
