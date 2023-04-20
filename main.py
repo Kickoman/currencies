@@ -4,19 +4,6 @@ import database
 import os
 
 
-def update_currencies_list(client: nbrb.Client, db_connection: database.StorageDatabase):
-    # One by one update example
-    for currency in client.available_currencies().values():
-        print(f'Trying to insert {currency}')
-        db_connection.update_currencies(currency)
-
-
-def update_rates(client: nbrb.Client, db_connection: database.StorageDatabase):
-    # Batch update example
-    rates = client.all_rates()
-    db_connection.update_rates(rates)
-
-
 def pure_update():
     import time
 
