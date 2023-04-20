@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 
 
@@ -72,11 +72,15 @@ class Client:
             }
         return self._available_currencies
 
-    def rate(self, currency: str | Currency) -> Rate:
+    def rate(self, currency: str | Currency, on_date: date | None = None) -> Rate:
         if not isinstance(currency, Currency):
             currency = self.available_currencies()[currency]
+        on_date = on_date.strftime('%Y-%m-%d') if on_date else ''
         currency_code = currency.internal_id
-        row = Client._make_api_call(Client.API_RATES + f'/{currency_code}')
+        row = Client._make_api_call(
+            Client.API_RATES + f'/{currency_code}',
+            parameters={'ondate': on_date}
+        )
         return Client._rate_from_dict(row)
 
     def all_rates(self) -> list[Rate]:

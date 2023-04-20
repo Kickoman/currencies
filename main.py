@@ -64,10 +64,21 @@ def main():
     args = parser.parse_args()
 
     client = nbrb.Client()
-    update_currencies_list(client, connect_to_database())
+    # update_currencies_list(client, connect_to_database())
     if args.currency is not None:
         get_single_rate(client, args.currency)
 
+    import datetime
+    dollar_yesterday = client.rate('USD', on_date=datetime.date.today() - datetime.timedelta(days=2))
+    dollar_before_yesterday = client.rate('USD', on_date=datetime.date.today() - datetime.timedelta(days=1))
+    dollar_today = client.rate('USD')
+
+    def print_rate(rate: nbrb.Rate):
+        print(f'Dollar on {rate.date} is {rate.rate}')
+
+    print_rate(dollar_yesterday)
+    print_rate(dollar_before_yesterday)
+    print_rate(dollar_today)
 
 if __name__ == '__main__':
     main()
