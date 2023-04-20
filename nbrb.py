@@ -10,8 +10,8 @@ class Currency:
     abbreviation: str
     name: str
     name_blr: str
-    scale: Decimal
-    periodicity: int  # Todo: what does it mean?
+    scale: int
+    periodicity: int
     date_start: datetime
     date_end: datetime
 
