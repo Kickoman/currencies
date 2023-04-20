@@ -1,47 +1,20 @@
 import argparse
 import nbrb
-import mysql.connector
+import database
 import os
 
 
-def connect_to_database():
-    return mysql.connector.connect(
-        host=os.environ.get('CURR_DB_HOST'),
-        port=os.environ.get('CURR_DB_PORT'),
-        user=os.environ.get('CURR_DB_USER'),
-        password=os.environ.get('CURR_DB_PASSWD'),
-        database=os.environ.get('CURR_DB_NAME')
-    )
-
-
-def update_currencies_list(client: nbrb.Client, db_connection: mysql.connector.connection):
-    query = (
-        "INSERT INTO currency ( "
-        "    internal_id,       " 
-        "    internal_code,     "
-        "    abbreviation,      "
-        "    name,              "
-        "    name_blr,          "
-        "    scale,             "
-        "    periodicity,       "
-        "    date_start,        "
-        "    date_end           "
-        ") VALUES (%s, %s, %s, %s, %s, %s, %s, ?, ?)"
-    )
-    cursor = db_connection.cursor(prepared=True)
+def update_currencies_list(client: nbrb.Client, db_connection: database.StorageDatabase):
+    # One by one update example
     for currency in client.available_currencies().values():
-        cursor.execute(query, (
-            currency.internal_id,
-            currency.internal_code,
-            currency.abbreviation,
-            currency.name,
-            currency.name_blr,
-            currency.scale,
-            currency.periodicity,
-            currency.date_start.strftime('%Y-%m-%d %H:%M:%S'),
-            currency.date_end.strftime('%Y-%m-%d %H:%M:%S'),
-        ))
-        db_connection.commit()
+        print(f'Trying to insert {currency}')
+        db_connection.update_currencies(currency)
+
+
+def update_rates(client: nbrb.Client, db_connection: database.StorageDatabase):
+    # Batch update example
+    rates = client.all_rates()
+    db_connection.update_rates(rates)
 
 
 def get_single_rate(client: nbrb.Client, currency_name: str):
@@ -63,22 +36,21 @@ def main():
 
     args = parser.parse_args()
 
-    client = nbrb.Client()
-    # update_currencies_list(client, connect_to_database())
+    api_client = nbrb.Client()
+    with database.StorageDatabase(
+        host=os.environ.get('CURR_DB_HOST'),
+        port=int(os.environ.get('CURR_DB_PORT')),
+        user=os.environ.get('CURR_DB_USER'),
+        password=os.environ.get('CURR_DB_PASSWD'),
+        database=os.environ.get('CURR_DB_NAME')
+    ) as db_client:
+        db_client.connect()
+        update_currencies_list(api_client, db_client)
+        update_rates(api_client, db_client)
+
     if args.currency is not None:
-        get_single_rate(client, args.currency)
+        get_single_rate(api_client, args.currency)
 
-    import datetime
-    dollar_yesterday = client.rate('USD', on_date=datetime.date.today() - datetime.timedelta(days=2))
-    dollar_before_yesterday = client.rate('USD', on_date=datetime.date.today() - datetime.timedelta(days=1))
-    dollar_today = client.rate('USD')
-
-    def print_rate(rate: nbrb.Rate):
-        print(f'Dollar on {rate.date} is {rate.rate}')
-
-    print_rate(dollar_yesterday)
-    print_rate(dollar_before_yesterday)
-    print_rate(dollar_today)
 
 if __name__ == '__main__':
     main()

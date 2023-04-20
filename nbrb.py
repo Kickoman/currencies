@@ -27,7 +27,7 @@ class Rate:
 class Client:
     API_BASE_URL = 'https://www.nbrb.by/api/exrates/'
     API_CURRENCIES = 'currencies/'
-    API_RATES = 'rates/'
+    API_RATES = 'rates'
     API_USD_CODE = 431
 
     def __init__(self):
@@ -75,14 +75,27 @@ class Client:
     def rate(self, currency: str | Currency, on_date: date | None = None) -> Rate:
         if not isinstance(currency, Currency):
             currency = self.available_currencies()[currency]
-        on_date = on_date.strftime('%Y-%m-%d') if on_date else ''
+        on_date = on_date if on_date else datetime.today()
         currency_code = currency.internal_id
         row = Client._make_api_call(
             Client.API_RATES + f'/{currency_code}',
-            parameters={'ondate': on_date}
+            parameters={'ondate': on_date.strftime('%Y-%m-%d')}
         )
         return Client._rate_from_dict(row)
 
-    def all_rates(self) -> list[Rate]:
-        res = self._make_api_call(Client.API_RATES)
+    def all_rates(self, on_date: date | None = None) -> list[Rate]:
+        on_date = on_date if on_date else datetime.today()
+        res = self._make_api_call(
+            Client.API_RATES,
+            parameters={
+                'ondate': on_date.strftime('%Y-%m-%d'),
+                'periodicity': 0,
+            },
+        ) + self._make_api_call(
+            Client.API_RATES,
+            parameters={
+                'ondate': on_date.strftime('%Y-%m-%d'),
+                'periodicity': 1,
+            },
+        )
         return [Client._rate_from_dict(row) for row in res]
