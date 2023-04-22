@@ -1,5 +1,11 @@
 # NBRB Fetcher
 
+---
+
+**Warning!** FYI: [NBRB API](https://www.nbrb.by/api/exrates/) may not be accessible outside of Belarus.
+
+---
+
 1. Create tables according to `schema.sql` file.
 2. Set your database credentials as environment variables:
    1. `CURR_DB_HOST`: database host;
